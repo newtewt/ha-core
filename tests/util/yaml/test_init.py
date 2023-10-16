@@ -456,16 +456,17 @@ def test_secrets_logger_removed(setUp):
 
 
 @patch("homeassistant.util.yaml.loader._LOGGER.error")
+def test_bad_logger_value(mock_class, setUp):
+    """Ensure logger: debug was removed."""
+    load_yaml(setUp["secret_path"], "logger: info\npw: abc")
+    load_yaml(
+        setUp["yaml_path"],
+        "api_password: !secret pw",
+        yaml_loader.Secrets(get_test_config_dir()),
+    )
+    assert mock_class.call_count == 1, "Expected an error about logger: value"
 
-# def test_bad_logger_value(, mock_error):
-#     """Ensure logger: debug was removed."""
-#     load_yaml(self._secret_path, "logger: info\npw: abc")
-#     load_yaml(
-#         self._yaml_path,
-#         "api_password: !secret pw",
-#         yaml_loader.Secrets(get_test_config_dir()),
-#     )
-#     assert mock_error.call_count == 1, "Expected an error about logger: value"
+
 # def test_secrets_are_not_dict():
 #     """Did secrets handle non-dict file."""
 #     FILES[
