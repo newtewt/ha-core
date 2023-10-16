@@ -439,19 +439,24 @@ def test_secret_overrides_parent(setUp):
     assert expected == setUp["yaml"]["http"]
 
 
-# def test_secrets_from_unrelated_fails():
-#     """Test loading secrets from unrelated folder fails."""
-#     load_yaml(os.path.join(self._unrelated_path, yaml.SECRET_YAML), "test: failure")
-#     with pytest.raises(HomeAssistantError):
-#         load_yaml(
-#             os.path.join(self._sub_folder_path, "sub.yaml"),
-#             "http:\n  api_password: !secret test",
-#         )
-# def test_secrets_logger_removed():
-#     """Ensure logger: debug was removed."""
-#     with pytest.raises(HomeAssistantError):
-#         load_yaml(self._yaml_path, "api_password: !secret logger")
-# @patch("homeassistant.util.yaml.loader._LOGGER.error")
+def test_secrets_from_unrelated_fails(setUp):
+    """Test loading secrets from unrelated folder fails."""
+    load_yaml(os.path.join(setUp["unrelated_path"], yaml.SECRET_YAML), "test: failure")
+    with pytest.raises(HomeAssistantError):
+        load_yaml(
+            os.path.join(setUp["sub_folder_path"], "sub.yaml"),
+            "http:\n  api_password: !secret test",
+        )
+
+
+def test_secrets_logger_removed(setUp):
+    """Ensure logger: debug was removed."""
+    with pytest.raises(HomeAssistantError):
+        load_yaml(setUp["yaml_path"], "api_password: !secret logger")
+
+
+@patch("homeassistant.util.yaml.loader._LOGGER.error")
+
 # def test_bad_logger_value(, mock_error):
 #     """Ensure logger: debug was removed."""
 #     load_yaml(self._secret_path, "logger: info\npw: abc")
