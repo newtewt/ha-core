@@ -467,23 +467,23 @@ def test_bad_logger_value(mock_class, setUp):
     assert mock_class.call_count == 1, "Expected an error about logger: value"
 
 
-# def test_secrets_are_not_dict():
-#     """Did secrets handle non-dict file."""
-#     FILES[
-#         self._secret_path
-#     ] = "- http_pw: pwhttp\n  comp1_un: un1\n  comp1_pw: pw1\n"
-#     with pytest.raises(HomeAssistantError):
-#         load_yaml(
-#             self._yaml_path,
-#             (
-#                 "http:\n"
-#                 "  api_password: !secret http_pw\n"
-#                 "component:\n"
-#                 "  username: !secret comp1_un\n"
-#                 "  password: !secret comp1_pw\n"
-#                 ""
-#             ),
-#         )
+def test_secrets_are_not_dict(setUp):
+    """Did secrets handle non-dict file."""
+    FILES[
+        setUp["secret_path"]
+    ] = "- http_pw: pwhttp\n  comp1_un: un1\n  comp1_pw: pw1\n"
+    with pytest.raises(HomeAssistantError):
+        load_yaml(
+            setUp["yaml_path"],
+            (
+                "http:\n"
+                "  api_password: !secret http_pw\n"
+                "component:\n"
+                "  username: !secret comp1_un\n"
+                "  password: !secret comp1_pw\n"
+                ""
+            ),
+        )
 
 
 @pytest.mark.parametrize("hass_config_yaml", ['key: [1, "2", 3]'])
