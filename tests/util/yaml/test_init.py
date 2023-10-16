@@ -418,25 +418,27 @@ def test_secrets_from_parent_folder(setUp):
     assert expected == setUp["yaml"]["http"]
 
 
-# def test_secret_overrides_parent():
-#     """Test loading current directory secret overrides the parent."""
-#     expected = {"api_password": "override"}
-#     load_yaml(
-#         os.path.join(self._sub_folder_path, yaml.SECRET_YAML), "http_pw: override"
-#     )
-#     self._yaml = load_yaml(
-#         os.path.join(self._sub_folder_path, "sub.yaml"),
-#         (
-#             "http:\n"
-#             "  api_password: !secret http_pw\n"
-#             "component:\n"
-#             "  username: !secret comp1_un\n"
-#             "  password: !secret comp1_pw\n"
-#             ""
-#         ),
-#         yaml_loader.Secrets(get_test_config_dir()),
-#     )
-#     assert expected == self._yaml["http"]
+def test_secret_overrides_parent(setUp):
+    """Test loading current directory secret overrides the parent."""
+    expected = {"api_password": "override"}
+    load_yaml(
+        os.path.join(setUp["sub_folder_path"], yaml.SECRET_YAML), "http_pw: override"
+    )
+    setUp["yaml"] = load_yaml(
+        os.path.join(setUp["sub_folder_path"], "sub.yaml"),
+        (
+            "http:\n"
+            "  api_password: !secret http_pw\n"
+            "component:\n"
+            "  username: !secret comp1_un\n"
+            "  password: !secret comp1_pw\n"
+            ""
+        ),
+        yaml_loader.Secrets(get_test_config_dir()),
+    )
+    assert expected == setUp["yaml"]["http"]
+
+
 # def test_secrets_from_unrelated_fails():
 #     """Test loading secrets from unrelated folder fails."""
 #     load_yaml(os.path.join(self._unrelated_path, yaml.SECRET_YAML), "test: failure")
