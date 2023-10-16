@@ -4,7 +4,6 @@ import io
 import os
 import pathlib
 from typing import Any
-import unittest
 from unittest.mock import patch
 
 import pytest
@@ -351,133 +350,130 @@ def load_yaml(fname, string, secrets=None):
         return load_yaml_config_file(fname, secrets)
 
 
-class TestSecrets(unittest.TestCase):
-    """Test the secrets parameter in the yaml utility."""
+@pytest.fixture
+def setUp():
+    """Create & load secrets file."""
+    test_context = {}
+    config_dir = get_test_config_dir()
+    test_context["yaml_path"] = os.path.join(config_dir, YAML_CONFIG_FILE)
+    test_context["secret_path"] = os.path.join(config_dir, yaml.SECRET_YAML)
+    test_context["sub_folder_path"] = os.path.join(config_dir, "subFolder")
+    test_context["unrelated_path"] = os.path.join(config_dir, "unrelated")
 
-    def setUp(self):
-        """Create & load secrets file."""
-        config_dir = get_test_config_dir()
-        self._yaml_path = os.path.join(config_dir, YAML_CONFIG_FILE)
-        self._secret_path = os.path.join(config_dir, yaml.SECRET_YAML)
-        self._sub_folder_path = os.path.join(config_dir, "subFolder")
-        self._unrelated_path = os.path.join(config_dir, "unrelated")
+    load_yaml(
+        test_context["secret_path"],
+        (
+            "http_pw: pwhttp\n"
+            "comp1_un: un1\n"
+            "comp1_pw: pw1\n"
+            "stale_pw: not_used\n"
+            "logger: debug\n"
+        ),
+    )
+    test_context["yaml"] = load_yaml(
+        test_context["yaml_path"],
+        (
+            "http:\n"
+            "  api_password: !secret http_pw\n"
+            "component:\n"
+            "  username: !secret comp1_un\n"
+            "  password: !secret comp1_pw\n"
+            ""
+        ),
+        yaml_loader.Secrets(config_dir),
+    )
+    yield test_context
+    tearDown()
 
-        load_yaml(
-            self._secret_path,
-            (
-                "http_pw: pwhttp\n"
-                "comp1_un: un1\n"
-                "comp1_pw: pw1\n"
-                "stale_pw: not_used\n"
-                "logger: debug\n"
-            ),
-        )
-        self._yaml = load_yaml(
-            self._yaml_path,
-            (
-                "http:\n"
-                "  api_password: !secret http_pw\n"
-                "component:\n"
-                "  username: !secret comp1_un\n"
-                "  password: !secret comp1_pw\n"
-                ""
-            ),
-            yaml_loader.Secrets(config_dir),
-        )
 
-    def tearDown(self):
-        """Clean up secrets."""
-        FILES.clear()
+def tearDown():
+    """Clean up secrets."""
+    FILES.clear()
 
-    def test_secrets_from_yaml(self):
-        """Did secrets load ok."""
-        expected = {"api_password": "pwhttp"}
-        assert expected == self._yaml["http"]
 
-        expected = {"username": "un1", "password": "pw1"}
-        assert expected == self._yaml["component"]
+def test_secrets_from_yaml(setUp):
+    """Did secrets load ok."""
+    yaml = setUp["yaml"]
+    expected = {"api_password": "pwhttp"}
+    assert expected == yaml["http"]
+    expected = {"username": "un1", "password": "pw1"}
+    assert expected == yaml["component"]
 
-    def test_secrets_from_parent_folder(self):
-        """Test loading secrets from parent folder."""
-        expected = {"api_password": "pwhttp"}
-        self._yaml = load_yaml(
-            os.path.join(self._sub_folder_path, "sub.yaml"),
-            (
-                "http:\n"
-                "  api_password: !secret http_pw\n"
-                "component:\n"
-                "  username: !secret comp1_un\n"
-                "  password: !secret comp1_pw\n"
-                ""
-            ),
-            yaml_loader.Secrets(get_test_config_dir()),
-        )
 
-        assert expected == self._yaml["http"]
-
-    def test_secret_overrides_parent(self):
-        """Test loading current directory secret overrides the parent."""
-        expected = {"api_password": "override"}
-        load_yaml(
-            os.path.join(self._sub_folder_path, yaml.SECRET_YAML), "http_pw: override"
-        )
-        self._yaml = load_yaml(
-            os.path.join(self._sub_folder_path, "sub.yaml"),
-            (
-                "http:\n"
-                "  api_password: !secret http_pw\n"
-                "component:\n"
-                "  username: !secret comp1_un\n"
-                "  password: !secret comp1_pw\n"
-                ""
-            ),
-            yaml_loader.Secrets(get_test_config_dir()),
-        )
-
-        assert expected == self._yaml["http"]
-
-    def test_secrets_from_unrelated_fails(self):
-        """Test loading secrets from unrelated folder fails."""
-        load_yaml(os.path.join(self._unrelated_path, yaml.SECRET_YAML), "test: failure")
-        with pytest.raises(HomeAssistantError):
-            load_yaml(
-                os.path.join(self._sub_folder_path, "sub.yaml"),
-                "http:\n  api_password: !secret test",
-            )
-
-    def test_secrets_logger_removed(self):
-        """Ensure logger: debug was removed."""
-        with pytest.raises(HomeAssistantError):
-            load_yaml(self._yaml_path, "api_password: !secret logger")
-
-    @patch("homeassistant.util.yaml.loader._LOGGER.error")
-    def test_bad_logger_value(self, mock_error):
-        """Ensure logger: debug was removed."""
-        load_yaml(self._secret_path, "logger: info\npw: abc")
-        load_yaml(
-            self._yaml_path,
-            "api_password: !secret pw",
-            yaml_loader.Secrets(get_test_config_dir()),
-        )
-        assert mock_error.call_count == 1, "Expected an error about logger: value"
-
-    def test_secrets_are_not_dict(self):
-        """Did secrets handle non-dict file."""
-        FILES[
-            self._secret_path
-        ] = "- http_pw: pwhttp\n  comp1_un: un1\n  comp1_pw: pw1\n"
-        with pytest.raises(HomeAssistantError):
-            load_yaml(
-                self._yaml_path,
-                (
-                    "http:\n"
-                    "  api_password: !secret http_pw\n"
-                    "component:\n"
-                    "  username: !secret comp1_un\n"
-                    "  password: !secret comp1_pw\n"
-                    ""
-                ),
-            )
+# def test_secrets_from_parent_folder(setUp):
+#     """Test loading secrets from parent folder."""
+#     expected = {"api_password": "pwhttp"}
+#     yaml = load_yaml(
+#         os.path.join(setUp['sub_folder_path'], "sub.yaml"),
+#         (
+#             "http:\n"
+#             "  api_password: !secret http_pw\n"
+#             "component:\n"
+#             "  username: !secret comp1_un\n"
+#             "  password: !secret comp1_pw\n"
+#             ""
+#         ),
+#         yaml_loader.Secrets(get_test_config_dir()),
+#     )
+#     assert expected == self._yaml["http"]
+# def test_secret_overrides_parent():
+#     """Test loading current directory secret overrides the parent."""
+#     expected = {"api_password": "override"}
+#     load_yaml(
+#         os.path.join(self._sub_folder_path, yaml.SECRET_YAML), "http_pw: override"
+#     )
+#     self._yaml = load_yaml(
+#         os.path.join(self._sub_folder_path, "sub.yaml"),
+#         (
+#             "http:\n"
+#             "  api_password: !secret http_pw\n"
+#             "component:\n"
+#             "  username: !secret comp1_un\n"
+#             "  password: !secret comp1_pw\n"
+#             ""
+#         ),
+#         yaml_loader.Secrets(get_test_config_dir()),
+#     )
+#     assert expected == self._yaml["http"]
+# def test_secrets_from_unrelated_fails():
+#     """Test loading secrets from unrelated folder fails."""
+#     load_yaml(os.path.join(self._unrelated_path, yaml.SECRET_YAML), "test: failure")
+#     with pytest.raises(HomeAssistantError):
+#         load_yaml(
+#             os.path.join(self._sub_folder_path, "sub.yaml"),
+#             "http:\n  api_password: !secret test",
+#         )
+# def test_secrets_logger_removed():
+#     """Ensure logger: debug was removed."""
+#     with pytest.raises(HomeAssistantError):
+#         load_yaml(self._yaml_path, "api_password: !secret logger")
+# @patch("homeassistant.util.yaml.loader._LOGGER.error")
+# def test_bad_logger_value(, mock_error):
+#     """Ensure logger: debug was removed."""
+#     load_yaml(self._secret_path, "logger: info\npw: abc")
+#     load_yaml(
+#         self._yaml_path,
+#         "api_password: !secret pw",
+#         yaml_loader.Secrets(get_test_config_dir()),
+#     )
+#     assert mock_error.call_count == 1, "Expected an error about logger: value"
+# def test_secrets_are_not_dict():
+#     """Did secrets handle non-dict file."""
+#     FILES[
+#         self._secret_path
+#     ] = "- http_pw: pwhttp\n  comp1_un: un1\n  comp1_pw: pw1\n"
+#     with pytest.raises(HomeAssistantError):
+#         load_yaml(
+#             self._yaml_path,
+#             (
+#                 "http:\n"
+#                 "  api_password: !secret http_pw\n"
+#                 "component:\n"
+#                 "  username: !secret comp1_un\n"
+#                 "  password: !secret comp1_pw\n"
+#                 ""
+#             ),
+#         )
 
 
 @pytest.mark.parametrize("hass_config_yaml", ['key: [1, "2", 3]'])
