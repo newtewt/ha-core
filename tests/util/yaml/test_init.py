@@ -400,22 +400,24 @@ def test_secrets_from_yaml(setUp):
     assert expected == yaml["component"]
 
 
-# def test_secrets_from_parent_folder(setUp):
-#     """Test loading secrets from parent folder."""
-#     expected = {"api_password": "pwhttp"}
-#     yaml = load_yaml(
-#         os.path.join(setUp['sub_folder_path'], "sub.yaml"),
-#         (
-#             "http:\n"
-#             "  api_password: !secret http_pw\n"
-#             "component:\n"
-#             "  username: !secret comp1_un\n"
-#             "  password: !secret comp1_pw\n"
-#             ""
-#         ),
-#         yaml_loader.Secrets(get_test_config_dir()),
-#     )
-#     assert expected == self._yaml["http"]
+def test_secrets_from_parent_folder(setUp):
+    """Test loading secrets from parent folder."""
+    expected = {"api_password": "pwhttp"}
+    load_yaml(
+        os.path.join(setUp["sub_folder_path"], "sub.yaml"),
+        (
+            "http:\n"
+            "  api_password: !secret http_pw\n"
+            "component:\n"
+            "  username: !secret comp1_un\n"
+            "  password: !secret comp1_pw\n"
+            ""
+        ),
+        yaml_loader.Secrets(get_test_config_dir()),
+    )
+    assert expected == setUp["yaml"]["http"]
+
+
 # def test_secret_overrides_parent():
 #     """Test loading current directory secret overrides the parent."""
 #     expected = {"api_password": "override"}
